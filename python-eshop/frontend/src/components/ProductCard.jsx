@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { api } from '../api/client';
 import { useAuth } from '../context/AuthContext';
+import FavouriteButton from './FavouriteButton';
 
 export default function ProductCard({ item, onAdded }) {
   const { refreshBasket } = useAuth();
@@ -24,12 +25,13 @@ export default function ProductCard({ item, onAdded }) {
 
   return (
     <article className="card flex flex-col overflow-hidden p-0 transition hover:-translate-y-0.5 hover:shadow-md">
-      <div className="aspect-square overflow-hidden bg-slate-100">
+      <div className="relative aspect-square overflow-hidden bg-slate-100">
         <img
           src={item.picture_uri}
           alt={item.name}
           className="h-full w-full object-cover"
         />
+        <FavouriteButton product={item} />
       </div>
       <div className="flex flex-1 flex-col gap-3 p-4">
         <div className="flex-1">

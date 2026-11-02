@@ -123,6 +123,9 @@ export const api = {
     }),
 
   getFavourites: () => request('/api/favourites'),
+  saveFavourite: (productId) => request(`/api/favourites/${productId}`, { method: 'PUT' }),
+  removeFavourite: (productId) =>
+    request(`/api/favourites/${productId}`, { method: 'DELETE' }),
 
   createOrder: (basketId) =>
     request('/api/orders', {
