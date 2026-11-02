@@ -122,6 +122,8 @@ export const api = {
       body: JSON.stringify({ email, password }),
     }),
 
+  getFavourites: () => request('/api/favourites'),
+
   createOrder: (basketId) =>
     request('/api/orders', {
       method: 'POST',
