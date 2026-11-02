@@ -25,3 +25,12 @@ def save_favourite(
         service.save(email, product_id)
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc))
+
+
+@router.delete("/{product_id}", status_code=204)
+def remove_favourite(
+    product_id: int,
+    email: str = Depends(require_authenticated_user),
+    service: FavouriteService = Depends(get_favourite_service),
+):
+    service.remove(email, product_id)

@@ -11,6 +11,9 @@ class FavouriteService:
             raise ValueError(f"Product {product_id} not found")
         self.db.add_favourite(buyer_email, product_id)
 
+    def remove(self, buyer_email: str, product_id: int) -> None:
+        self.db.remove_favourite(buyer_email, product_id)
+
     def list_favourites(self, buyer_email: str) -> list[CatalogItemResponse]:
         return [
             CatalogItemResponse(

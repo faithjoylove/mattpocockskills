@@ -321,6 +321,13 @@ class DatabaseClient:
                 (buyer_email, catalog_item_id, datetime.now(timezone.utc).isoformat()),
             )
 
+    def remove_favourite(self, buyer_email: str, catalog_item_id: int) -> None:
+        with self._connection() as conn:
+            conn.execute(
+                "DELETE FROM favourites WHERE buyer_email = ? AND catalog_item_id = ?",
+                (buyer_email, catalog_item_id),
+            )
+
     def list_favourite_items(self, buyer_email: str) -> list[CatalogItem]:
         query = """
             SELECT ci.*, cb.brand AS brand_name, ct.type AS type_name

@@ -1,4 +1,5 @@
 from db.seed import DEMO_EMAIL
+from tests.conftest import login
 
 
 def products(client, count=3):
@@ -14,6 +15,15 @@ def listed_ids(client, headers):
     response = client.get("/api/favourites", headers=headers)
     assert response.status_code == 200, response.text
     return [favourite["id"] for favourite in response.json()]
+
+
+def other_shopper_headers(client):
+    registered = client.post(
+        "/api/auth/register",
+        json={"email": "other@example.com", "password": "hunter22"},
+    )
+    assert registered.status_code == 200, registered.text
+    return {"Authorization": f"Bearer {registered.json()['access_token']}"}
 
 
 def test_saved_product_is_listed_with_current_details(client, demo_headers):
@@ -86,15 +96,68 @@ def test_basket_id_cannot_address_a_shoppers_favourites(client, demo_headers):
 
 def test_shoppers_cannot_see_each_others_favourites(client, demo_headers):
     first, second, _ = products(client)
-    registered = client.post(
-        "/api/auth/register",
-        json={"email": "other@example.com", "password": "hunter22"},
-    )
-    assert registered.status_code == 200, registered.text
-    other_headers = {"Authorization": f"Bearer {registered.json()['access_token']}"}
+    other_headers = other_shopper_headers(client)
 
     save(client, demo_headers, first)
     save(client, other_headers, second)
 
     assert listed_ids(client, demo_headers) == [first["id"]]
     assert listed_ids(client, other_headers) == [second["id"]]
+
+
+def test_removed_favourite_disappears_from_the_list(client, demo_headers):
+    first, second, _ = products(client)
+    save(client, demo_headers, first)
+    save(client, demo_headers, second)
+
+    removed = client.delete(f"/api/favourites/{first['id']}", headers=demo_headers)
+
+    assert removed.status_code == 204, removed.text
+    assert listed_ids(client, demo_headers) == [second["id"]]
+
+
+def test_removing_a_product_that_is_not_a_favourite_succeeds(client, demo_headers):
+    first, second, _ = products(client)
+    save(client, demo_headers, first)
+
+    never_saved = client.delete(f"/api/favourites/{second['id']}", headers=demo_headers)
+    unknown = client.delete("/api/favourites/999999", headers=demo_headers)
+
+    assert never_saved.status_code == 204
+    assert unknown.status_code == 204
+    assert listed_ids(client, demo_headers) == [first["id"]]
+
+
+def test_removing_requires_sign_in(client, demo_headers, anon_headers):
+    product = products(client, 1)[0]
+    save(client, demo_headers, product)
+    url = f"/api/favourites/{product['id']}"
+
+    assert client.delete(url).status_code == 401
+    assert client.delete(url, headers=anon_headers).status_code == 401
+    assert client.delete(url, headers={"X-Basket-Id": DEMO_EMAIL}).status_code == 401
+    assert listed_ids(client, demo_headers) == [product["id"]]
+
+
+def test_a_shopper_cannot_remove_another_shoppers_favourite(client, demo_headers):
+    product = products(client, 1)[0]
+    other_headers = other_shopper_headers(client)
+    save(client, demo_headers, product)
+    save(client, other_headers, product)
+
+    removed = client.delete(f"/api/favourites/{product['id']}", headers=other_headers)
+
+    assert removed.status_code == 204
+    assert listed_ids(client, other_headers) == []
+    assert listed_ids(client, demo_headers) == [product["id"]]
+
+
+def test_favourites_are_still_there_after_logging_in_again(client, demo_headers):
+    first, second, _ = products(client)
+    save(client, demo_headers, first)
+    save(client, demo_headers, second)
+    client.delete(f"/api/favourites/{first['id']}", headers=demo_headers)
+
+    fresh_headers = login(client)
+
+    assert listed_ids(client, fresh_headers) == [second["id"]]
