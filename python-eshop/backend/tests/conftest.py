@@ -12,11 +12,19 @@ from db.seed import DEMO_EMAIL, DEMO_PASSWORD
 def no_network(monkeypatch):
     """Fail any test that tries to open an outbound connection."""
 
+    real_connect = socket.socket.connect
+
     def guard(*args, **kwargs):
         raise RuntimeError("Tests must not make network calls")
 
+    def guard_connect(sock, address, *args, **kwargs):
+        # asyncio on Windows wires its event loop with a loopback socketpair.
+        if isinstance(address, tuple) and address[0] in ("127.0.0.1", "::1"):
+            return real_connect(sock, address, *args, **kwargs)
+        return guard()
+
     monkeypatch.setattr(socket, "create_connection", guard)
-    monkeypatch.setattr(socket.socket, "connect", guard)
+    monkeypatch.setattr(socket.socket, "connect", guard_connect)
 
 
 @pytest.fixture
